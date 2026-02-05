@@ -1,5 +1,5 @@
 diff --git i/src/tool_operate.c w/src/tool_operate.c
-index 4bc98a1..a4bd367 100644
+index 4bc98a1..878fff4 100644
 --- i/src/tool_operate.c
 +++ w/src/tool_operate.c
 @@ -23,6 +23,14 @@
@@ -164,7 +164,7 @@ index 4bc98a1..a4bd367 100644
      per->config = config;
      per->curl = curl;
      per->urlnum = u->num;
-@@ -2348,3 +2444,181 @@ CURLcode operate(int argc, argv_item_t argv[])
+@@ -2348,3 +2444,197 @@ CURLcode operate(int argc, argv_item_t argv[])
  
    return result;
  }
@@ -226,19 +226,35 @@ index 4bc98a1..a4bd367 100644
 +  ctx->mode = encoding_parse_mode(encoding_str);
 +  ctx->ccsid = encoding_get_ccsid(encoding_str);
 +  
++  if(!is_upload && encoding_str) {
++    /* For downloads, if the user requested ASCII/819, we don't need conversion
++       because the network data is already ASCII. We only need to tag it. */
++    if(ctx->mode == ENCODING_E2A || ctx->ccsid == 819) {
++      ctx->mode = ENCODING_NONE;
++    }
++  }
++
 +  if(ctx->mode == ENCODING_ICONV && encoding_str) {
 +    if(is_upload) {
 +      ctx->from_encoding = strdup("IBM-1047");
 +      ctx->to_encoding = strdup(encoding_str);
 +    }
 +    else {
-+      ctx->from_encoding = strdup(encoding_str);
-+      ctx->to_encoding = strdup("IBM-1047");
++      /* Download: Network (ISO8859-1) -> User Requested Encoding */
++      ctx->from_encoding = strdup("ISO8859-1");
++      ctx->to_encoding = strdup(encoding_str);
 +    }
 +    
 +    if(!ctx->from_encoding || !ctx->to_encoding) {
 +      encoding_cleanup(ctx);
 +      return -1;
++    }
++    
++    /* If source and target encodings are the same, no conversion is needed */
++    if(!strcasecmp(ctx->from_encoding, ctx->to_encoding)) {
++      encoding_cleanup(ctx);
++      ctx->mode = ENCODING_NONE;
++      return 0;
 +    }
 +    
 +    iconv_t cd = iconv_open(ctx->to_encoding, ctx->from_encoding);

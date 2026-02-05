@@ -1,5 +1,5 @@
 diff --git i/src/tool_cb_wrt.c w/src/tool_cb_wrt.c
-index 1b76565..3c23cb1 100644
+index 1b76565..5aa1892 100644
 --- i/src/tool_cb_wrt.c
 +++ w/src/tool_cb_wrt.c
 @@ -28,6 +28,14 @@
@@ -35,7 +35,7 @@ index 1b76565..3c23cb1 100644
    outs->s_isreg = TRUE;
    outs->fopened = TRUE;
    outs->stream = file;
-@@ -308,6 +327,45 @@ size_t tool_write_cb(char *buffer, size_t sz, size_t nmemb, void *userdata)
+@@ -308,6 +327,48 @@ size_t tool_write_cb(char *buffer, size_t sz, size_t nmemb, void *userdata)
    if(!outs->stream && !tool_create_output_file(outs, per->config))
      return CURL_WRITEFUNC_ERROR;
  
@@ -43,20 +43,23 @@ index 1b76565..3c23cb1 100644
 +  /* Handle download encoding conversion */
 +  char *converted_buffer = NULL;
 +  if(config->download_encoding && per->encoding_ctx) {
-+    /* Convert downloaded data using encoding context */
-+    size_t size = bytes;
-+    converted_buffer = malloc(bytes * 2); /* Allow for expansion */
-+    if(converted_buffer) {
-+      memcpy(converted_buffer, buffer, bytes);
-+      if(encoding_convert(per->encoding_ctx, converted_buffer, &size, 
-+                          bytes * 2) == 0) {
-+        buffer = converted_buffer;
-+        bytes = size;
-+      }
-+      else {
-+        /* Conversion failed, free buffer and use original */
-+        free(converted_buffer);
-+        converted_buffer = NULL;
++    encoding_ctx_t *ctx = (encoding_ctx_t*)per->encoding_ctx;
++    if(ctx->mode != ENCODING_NONE) {
++      /* Convert downloaded data using encoding context */
++      size_t size = bytes;
++      converted_buffer = malloc(bytes * 2); /* Allow for expansion */
++      if(converted_buffer) {
++        memcpy(converted_buffer, buffer, bytes);
++        if(encoding_convert(per->encoding_ctx, converted_buffer, &size, 
++                            bytes * 2) == 0) {
++          buffer = converted_buffer;
++          bytes = size;
++        }
++        else {
++          /* Conversion failed, free buffer and use original */
++          free(converted_buffer);
++          converted_buffer = NULL;
++        }
 +      }
 +    }
 +  }
@@ -81,7 +84,7 @@ index 1b76565..3c23cb1 100644
    if(is_tty && (outs->bytes < 2000) && !config->terminal_binary_ok) {
      /* binary output to terminal? */
      if(memchr(buffer, 0, bytes)) {
-@@ -342,6 +400,14 @@ size_t tool_write_cb(char *buffer, size_t sz, size_t nmemb, void *userdata)
+@@ -342,6 +403,14 @@ size_t tool_write_cb(char *buffer, size_t sz, size_t nmemb, void *userdata)
      /* we added this amount of data to the output */
      outs->bytes += bytes;
  

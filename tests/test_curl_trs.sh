@@ -1,5 +1,4 @@
 #!/bin/env bash
-set -x
 
 # Tests various scenarios for creating, validating, and uploading TRS files
 
